@@ -41,6 +41,7 @@ var delta = {
 
 describe('Server', function() {
   it('handles two deltas with signalk path', function(done) {
+    this.timeout(10000);
     var fp = require("find-free-port")
     fp(3000, function(err, freePort) {
       var host = 'http://localhost:' + freePort;
