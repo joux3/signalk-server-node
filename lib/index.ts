@@ -28,80 +28,168 @@ const FullSignalK = require('signalk-schema').FullSignalK
 import StreamBundle = require('./streambundle')
 import SubscriptionManager = require('./subscriptionmanager')
 
-function Server(opts: any) {
-  this.params = opts || {};
-  this.app = express();
-  this.app.started = false;
-
-  this.app.overrides = {
-    settings: this.params.settings || null,
-    port: this.params.port || null
-  };
-
-  var app = this.app;
-  require('./config/config')(app);
-  app.selfContext = 'vessels.' + app.selfId;
-  app.version = "0.0.1"
-
-  app.use(require('body-parser').json())
-  app.get('/', (req: express.Request, res: express.Response) => {
-    res.sendFile(__dirname + '/index.html')
-  })
-
-  app.signalk = new FullSignalK(app.selfId, app.selfType, app.config.defaults);
-
-  app.streambundle = new StreamBundle(app.selfId);
-  app.signalk.on('delta', app.streambundle.pushDelta.bind(app.streambundle))
-  app.subscriptionmanager = new SubscriptionManager(app);
+interface App extends express.Application {
+  started?: boolean;
+  overrides?: any;
+  selfContext?: string;
+  version?: string;
+  signalk?: any;
+  selfId?: string;
+  streambundle?: StreamBundle;
+  subscriptionmanager?: SubscriptionManager;
+  pruneInterval?: number;
+  selfType?: any;
+  config?: any;
+  providers?: any[];
+  server?: http.Server;
+  interfaces?: any;
+  connections?: any;
+  clients?: number;
 }
+class Server {
+  params: any;
+  app: App;
+  constructor(opts: any) {
+    this.params = opts || {};
+    this.app = express();
+    this.app.started = false;
 
-module.exports = Server;
+    this.app.overrides = {
+      settings: this.params.settings || null,
+      port: this.params.port || null
+    };
 
-Server.prototype.start = function() {
-  var self = this;
-  var app = this.app;
+    var app = this.app;
+    require('./config/config')(app);
+    app.selfContext = 'vessels.' + app.selfId;
+    app.version = "0.0.1"
 
-  this.app.pruneInterval = setInterval(app.signalk.pruneContexts.bind(app.signalk, 7 * 60 * 1000), 60 * 1000);
-   this.app.providers = [];
+    app.use(require('body-parser').json())
+    app.get('/', (req: express.Request, res: express.Response) => {
+      res.sendFile(__dirname + '/index.html')
+    })
 
-  return new Promise((resolve, reject) => {
-    createServer(app, function(err, server) {
-      app.server = server;
-      app.interfaces = {};
-      app.connections = {};
-      app.clients = 0;
+    app.signalk = new FullSignalK(app.selfId, app.selfType, app.config.defaults);
 
-      debug("ID type: " + app.selfType);
-      debug("ID: " + app.selfId);
+    app.streambundle = new StreamBundle(app.selfId);
+    app.signalk.on('delta', app.streambundle.pushDelta.bind(app.streambundle))
+    app.subscriptionmanager = new SubscriptionManager(app);
+  }
 
-      startInterfaces(app);
-      startMdns(app);
-      app.providers = require('./pipedproviders')(app).start();
+  start() {
+    var self = this;
+    var app = this.app;
 
-      var SD_LISTEN_FDS_START = 3
-      var port = process.env.LISTEN_FDS > 0
-        ? {
+    this.app.pruneInterval = setInterval(app.signalk.pruneContexts.bind(app.signalk, 7 * 60 * 1000), 60 * 1000);
+    this.app.providers = [];
+
+    return new Promise((resolve, reject) => {
+      createServer(app, function (err: Error, server: http.Server) {
+        app.server = server;
+        app.interfaces = {};
+        app.connections = {};
+        app.clients = 0;
+
+        debug("ID type: " + app.selfType);
+        debug("ID: " + app.selfId);
+
+        startInterfaces(app);
+        startMdns(app);
+        app.providers = require('./pipedproviders')(app).start();
+
+        var SD_LISTEN_FDS_START = 3
+        var port = process.env.LISTEN_FDS > 0
+            ? {
           fd: SD_LISTEN_FDS_START
         }
-        : app.config.port;
+            : app.config.port;
 
-      server.listen(port, function() {
-        console.log('signalk-server running at 0.0.0.0:' + port + "\n");
-        app.started = true;
-        resolve(self);
-      });
+        server.listen(port, function () {
+          console.log('signalk-server running at 0.0.0.0:' + port + "\n");
+          app.started = true;
+          resolve(self);
+        });
+      })
     })
-  })
-};
+  };
+
+  reload(mixed) {
+    var settings, self = this;
+
+    if (typeof mixed === 'string') {
+      try {
+        settings = require(path.join(process.cwd(), mixed));
+      } catch (e) {
+        debug("Settings file '" + settings + "' doesn't exist.");
+      }
+    }
+
+    if (mixed !== null && typeof mixed === 'object') {
+      settings = mixed;
+    }
+
+    if (settings) {
+      this.app.config.settings = settings;
+    }
+
+    this.stop();
+
+    setTimeout(function () {
+      self.start();
+    }, 1000);
+
+    return this;
+  };
+
+  stop(cb?: Function) {
+    if (this.app.started === true) {
+      _.each(this.app.interfaces, function (intf) {
+        if (intf !== null && typeof intf === 'object' && typeof intf.stop === 'function') {
+          intf.stop();
+        }
+      });
+
+      debug("Closing server...");
+
+      this.app.server.close(function () {
+        debug("Server closed...");
+        this.server = null;
+        if (cb) {
+          cb();
+        }
+      });
+
+      for (var id in this.app.connections) {
+        if (this.app.connections.hasOwnProperty(id)) {
+          debug("Closing connection #" + id);
+          this.app.connections[id].destroy();
+          delete this.app.connections[id];
+        }
+      }
+
+      if (this.app.pruneInterval) {
+        clearInterval(this.app.pruneInterval);
+      }
+      this.app.started = false;
+    }
+
+    this.app.providers.forEach(function (providerHolder) {
+      providerHolder.pipeElements[0].end();
+    });
+
+    return this;
+  };
+}
 
 function createServer(app, cb) {
   if (typeof app.config.settings.ssl === "undefined" || app.config.settings.ssl) {
-    getCertificateOptions(function(err, options) {
+    getCertificateOptions(function (err, options) {
       debug("Starting server to serve both http and https")
       cb(null, httpolyglot.createServer(options, app));
     });
     return;
-  };
+  }
+  ;
   var server;
   try {
     debug("Starting server to serve only http")
@@ -133,7 +221,7 @@ function createCertificateOptions(cb) {
   pem.createCertificate({
     days: 360,
     selfSigned: true
-  }, function(err, keys) {
+  }, function (err, keys) {
     fs.writeFile('./settings/ssl-key.pem', keys.serviceKey);
     fs.writeFile('./settings/ssl-cert.pem', keys.certificate);
     cb(null, {
@@ -160,10 +248,10 @@ function startMdns(app) {
 function startInterfaces(app) {
   debug("Interfaces config:" + JSON.stringify(app.config.settings.interfaces));
   var availableInterfaces = require('./interfaces');
-  _.forIn(availableInterfaces, function(iface, name) {
+  _.forIn(availableInterfaces, function (iface, name) {
     if (_.isUndefined(app.config.settings.interfaces) ||
-      _.isUndefined(app.config.settings.interfaces[name]) ||
-      app.config.settings.interfaces[name]) {
+        _.isUndefined(app.config.settings.interfaces[name]) ||
+        app.config.settings.interfaces[name]) {
       debug("Loading interface '" + name + "'");
       app.interfaces[name] = iface(app);
       if (app.interfaces[name] && _.isFunction(app.interfaces[name].start)) {
@@ -176,67 +264,4 @@ function startInterfaces(app) {
   });
 }
 
-Server.prototype.reload = function(mixed) {
-  var settings, self = this;
-
-  if (typeof mixed === 'string') {
-    try {
-      settings = require(path.join(process.cwd(), mixed));
-    } catch (e) {
-      debug("Settings file '" + settings + "' doesn't exist.");
-    }
-  }
-
-  if (mixed !== null && typeof mixed === 'object') {
-    settings = mixed;
-  }
-
-  if (settings) {
-    this.app.config.settings = settings;
-  }
-
-  this.stop();
-
-  setTimeout(function() {
-    self.start();
-  }, 1000);
-
-  return this;
-};
-
-Server.prototype.stop = function(cb) {
-  if (this.app.started === true) {
-    _.each(this.app.interfaces, function(intf) {
-      if (intf !== null && typeof intf === 'object' && typeof intf.stop === 'function') {
-        intf.stop();
-      }
-    });
-
-    debug("Closing server...");
-
-    this.app.server.close(function() {
-      debug("Server closed...");
-      this.server = null;
-      cb();
-    });
-
-    for (var id in this.app.connections) {
-      if (this.app.connections.hasOwnProperty(id)) {
-        debug("Closing connection #" + id);
-        this.app.connections[id].destroy();
-        delete this.app.connections[id];
-      }
-    }
-
-    if (this.app.pruneInterval) {
-      clearInterval(this.app.pruneInterval);
-    }
-    this.app.started = false;
-  }
-
-  this.app.providers.forEach(function(providerHolder) {
-    providerHolder.pipeElements[0].end();
-  });
-
-  return this;
-};
+module.exports = Server;
