@@ -16,53 +16,59 @@
 
 var Bacon = require('baconjs');
 
-function StreamBundle(selfId) {
-  this.selfContext = 'vessels.' + selfId;
-  this.buses = {};
-  this.streams = {};
-  this.keys = new Bacon.Bus();
-}
+class StreamBundle {
+    selfContext: string;
+    buses: {[path: string]: any};
+    streams: {[path: string]: any};
+    keys: any;
+    constructor(selfId) {
+        this.selfContext = 'vessels.' + selfId;
+        this.buses = {};
+        this.streams = {};
+        this.keys = new Bacon.Bus();
+    }
 
-StreamBundle.prototype.pushDelta = function(delta) {
-  if (delta.updates) {
-    delta.updates.forEach(update => {
-      if (update.values) {
-        update.values.forEach(pathValue => {
-          this.push({
-            path: pathValue.path,
-            value: pathValue.value,
-            context: delta.context,
-            source: update.source,
-            $source: update.$source
-          });
-        }, this)
-      }
-    }, this);
-  }
-}
+    pushDelta(delta) {
+        if (delta.updates) {
+            delta.updates.forEach(update => {
+                if (update.values) {
+                    update.values.forEach(pathValue => {
+                        this.push({
+                            path: pathValue.path,
+                            value: pathValue.value,
+                            context: delta.context,
+                            source: update.source,
+                            $source: update.$source
+                        });
+                    }, this)
+                }
+            }, this);
+        }
+    }
 
-StreamBundle.prototype.push = function(pathValueWithSourceAndContext) {
-  this.getBus(pathValueWithSourceAndContext.path).push(pathValueWithSourceAndContext);
-  if (pathValueWithSourceAndContext.context === this.selfContext) {
-    this.getSelfStream(pathValueWithSourceAndContext.path).push(pathValueWithSourceAndContext.value);
-  }
-}
+    push(pathValueWithSourceAndContext) {
+        this.getBus(pathValueWithSourceAndContext.path).push(pathValueWithSourceAndContext);
+        if (pathValueWithSourceAndContext.context === this.selfContext) {
+            this.getSelfStream(pathValueWithSourceAndContext.path).push(pathValueWithSourceAndContext.value);
+        }
+    }
 
-StreamBundle.prototype.getBus = function(path) {
-  var result = this.buses[path];
-  if (!result) {
-    result = this.buses[path] = new Bacon.Bus();
-    this.keys.push(path);
-  }
-  return result;
-}
+    getBus(path) {
+        var result = this.buses[path];
+        if (!result) {
+            result = this.buses[path] = new Bacon.Bus();
+            this.keys.push(path);
+        }
+        return result;
+    }
 
-StreamBundle.prototype.getSelfStream = function(path) {
-  var result = this.streams[path];
-  if (!result) {
-    result = this.streams[path] = new Bacon.Bus();
-  }
-  return result;
+    getSelfStream(path) {
+        var result = this.streams[path];
+        if (!result) {
+            result = this.streams[path] = new Bacon.Bus();
+        }
+        return result;
+    }
 }
 
 export = StreamBundle;
