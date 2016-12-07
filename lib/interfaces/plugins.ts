@@ -29,7 +29,7 @@ module.exports = function(app) {
 
       app.use('/plugins/configure', express.static(path.join(__dirname, '/../../plugin-config/public')));
 
-      router = express.Router();
+      const router = express.Router();
 
       app.get('/plugins', function(req, res, next) {
         res.json(app.plugins.map((plugin) => {
@@ -77,7 +77,6 @@ function getPluginOptions(id) {
     debug("Could not find options for plugin " + id + ", returning empty options")
     return {}
   }
-  return JSON.parse()
 }
 
 function startPlugins(app) {

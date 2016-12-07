@@ -22,7 +22,7 @@ module.exports = function(app) {
   var idSequence = 0;
   var server = null;
   var port = 5555;
-  var api = {};
+  var api: any = {};
 
 
   var debug = require('debug')('signalk-server:interfaces:tcp');

@@ -23,7 +23,7 @@ module.exports = function(app) {
   var _ = require('lodash'),
     debug = require('debug')('signalk-server:interfaces:ws'),
     Primus = require('primus'),
-    api = {},
+    api: any = {},
     started = false,
     primus;
 

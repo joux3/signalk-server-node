@@ -38,10 +38,10 @@ module.exports = function(app) {
           return res.json(app.selfId)
         }
 
-        path = path.length > 0 ? path.replace(/\/$/, '').replace(/self/, app.selfId).split('/') : [];
+        const pathParts = path.length > 0 ? path.replace(/\/$/, '').replace(/self/, app.selfId).split('/') : [];
 
-        for(var i in path) {
-          var p = path[i];
+        for(var i in pathParts) {
+          var p = pathParts[i];
 
           if(typeof last[p] !== 'undefined') {
             last = last[p];
