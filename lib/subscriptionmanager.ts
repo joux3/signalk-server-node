@@ -14,27 +14,32 @@
  * limitations under the License.
  */
 
+import StreamBundle = require("./streambundle");
 const _ = require('lodash')
 const Bacon = require('baconjs');
 
 const debug = require('debug')('signalk-server:subscriptionmanager')
 
-function SubscriptionManager(app) {
-  this.streambundle = app.streambundle
-  this.selfContext = app.selfContext
-}
+class SubscriptionManager {
+  streambundle: StreamBundle;
+  selfContext: string;
+  constructor(app) {
+    this.streambundle = app.streambundle
+    this.selfContext = app.selfContext
+  }
 
-SubscriptionManager.prototype.subscribe = function(command, unsubscribes, errorCallback, callback) {
-  const contextFilter = contextMatcher(this.selfContext, command)
-  if (Array.isArray(command.subscribe)) {
-    handleSubscribeRows(command.subscribe, unsubscribes, this.streambundle.buses, contextFilter, callback, errorCallback)
-    //listen to new keys and then use the same logic to check if we
-    //want to subscribe, passing in a map with just that single bus
-    unsubscribes.push(this.streambundle.keys.onValue(key => {
-      var buses = {}
-      buses[key] = this.streambundle.getBus(key)
-      handleSubscribeRows(command.subscribe, unsubscribes, buses, contextFilter, callback, errorCallback)
-    }))
+  subscribe(command, unsubscribes, errorCallback, callback) {
+    const contextFilter = contextMatcher(this.selfContext, command)
+    if (Array.isArray(command.subscribe)) {
+      handleSubscribeRows(command.subscribe, unsubscribes, this.streambundle.buses, contextFilter, callback, errorCallback)
+      //listen to new keys and then use the same logic to check if we
+      //want to subscribe, passing in a map with just that single bus
+      unsubscribes.push(this.streambundle.keys.onValue(key => {
+        var buses = {}
+        buses[key] = this.streambundle.getBus(key)
+        handleSubscribeRows(command.subscribe, unsubscribes, buses, contextFilter, callback, errorCallback)
+      }))
+    }
   }
 }
 
