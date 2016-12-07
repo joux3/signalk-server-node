@@ -41,6 +41,7 @@
     "node": "6"
   },
   "dependencies": {
+    "@types/node": "0.0.2",
     "baconjs": "^0.7.88",
     "body-parser": "^1.14.1",
     "bower": "^1.7.7",
