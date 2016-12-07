@@ -84,7 +84,7 @@ class Server {
     this.app.providers = [];
 
     return new Promise((resolve, reject) => {
-      createServer(app, function (err: Error, server: http.Server) {
+      createServer(app, function (err, server) {
         app.server = server;
         app.interfaces = {};
         app.connections = {};
@@ -113,7 +113,7 @@ class Server {
     })
   };
 
-  reload(mixed) {
+  reload(mixed: any) {
     var settings, self = this;
 
     if (typeof mixed === 'string') {
@@ -181,9 +181,9 @@ class Server {
   };
 }
 
-function createServer(app, cb) {
+function createServer(app: App, cb: (err: Error, server: http.Server) => void) {
   if (typeof app.config.settings.ssl === "undefined" || app.config.settings.ssl) {
-    getCertificateOptions(function (err, options) {
+    getCertificateOptions(function (err: Error, options: any) {
       debug("Starting server to serve both http and https")
       cb(null, httpolyglot.createServer(options, app));
     });
@@ -195,13 +195,18 @@ function createServer(app, cb) {
     debug("Starting server to serve only http")
     server = http.createServer(app);
   } catch (e) {
-    cb(e);
+    cb(e, null);
     return;
   }
   cb(null, server);
 }
 
-function getCertificateOptions(cb) {
+interface CertificateDetails {
+  key: Buffer;
+  cert: Buffer;
+}
+type CertificateCallback = (err: Error, opts: CertificateDetails) => void;
+function getCertificateOptions(cb: CertificateCallback) {
   try {
     if (fs.statSync('./settings/ssl-key.pem').isFile() && fs.statSync('./settings/ssl-cert.pem')) {
       debug("Using certificate ssl-key.pem and ssl-cert.pem in ./settings/");
@@ -216,12 +221,12 @@ function getCertificateOptions(cb) {
   }
 }
 
-function createCertificateOptions(cb) {
+function createCertificateOptions(cb: CertificateCallback) {
   debug("Creating certificate files in ./settings/");
   pem.createCertificate({
     days: 360,
     selfSigned: true
-  }, function (err, keys) {
+  }, function (err: Error, keys: any) {
     fs.writeFile('./settings/ssl-key.pem', keys.serviceKey);
     fs.writeFile('./settings/ssl-cert.pem', keys.certificate);
     cb(null, {
@@ -231,7 +236,7 @@ function createCertificateOptions(cb) {
   });
 }
 
-function startMdns(app) {
+function startMdns(app: App) {
   if (_.isUndefined(app.config.settings.mdns) || app.config.settings.mdns) {
     debug("Starting interface 'mDNS'");
     try {
@@ -245,7 +250,7 @@ function startMdns(app) {
   }
 }
 
-function startInterfaces(app) {
+function startInterfaces(app: App) {
   debug("Interfaces config:" + JSON.stringify(app.config.settings.interfaces));
   var availableInterfaces = require('./interfaces');
   _.forIn(availableInterfaces, function (iface, name) {
