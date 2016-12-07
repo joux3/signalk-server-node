@@ -84,7 +84,8 @@ function startPlugins(app) {
   fs.readdirSync('./node_modules/').filter(name => name != '.bin').forEach(pluginName => {
     var metadata;
     try {
-      metadata = require('../../node_modules/' + pluginName + '/package.json')
+      const path = '../../node_modules/' + pluginName + '/package.json';
+      metadata = fs.exists(path) && require(path);
     } catch (e) {
       console.log(e)
     }
