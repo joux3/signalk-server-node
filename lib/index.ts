@@ -21,15 +21,14 @@ const debug = debugModule('signalk-server')
 import path = require('path')
 import http = require('http')
 import https = require('https')
-import httpolyglot = require('httpolyglot')
+const httpolyglot = require('httpolyglot')
 const pem = require('pem')
 import fs = require('fs')
-import FullSignalKimport = require('signalk-schema')
-const FullSignalK = FullSignalKimport.FullSignalK
+const FullSignalK = require('signalk-schema').FullSignalK
 import StreamBundle = require('./streambundle')
 import SubscriptionManager = require('./subscriptionmanager')
 
-function Server(opts) {
+function Server(opts: any) {
   this.params = opts || {};
   this.app = express();
   this.app.started = false;
@@ -45,7 +44,7 @@ function Server(opts) {
   app.version = "0.0.1"
 
   app.use(require('body-parser').json())
-  app.get('/', (req,res) => {
+  app.get('/', (req: express.Request, res: express.Response) => {
     res.sendFile(__dirname + '/index.html')
   })
 
