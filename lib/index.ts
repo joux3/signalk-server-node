@@ -14,18 +14,20 @@
  * limitations under the License.
 */
 
-var express = require('express'),
-  _ = require('lodash'),
-  debug = require('debug')('signalk-server'),
-  path = require('path'),
-  http = require('http'),
-  https = require('https'),
-  httpolyglot = require('httpolyglot'),
-  pem = require('pem'),
-  fs = require('fs'),
-  FullSignalK = require('signalk-schema').FullSignalK,
-  StreamBundle = require('./streambundle'),
-  SubscriptionManager = require('./subscriptionmanager')
+import express = require('express')
+import _ = require('lodash')
+import debugModule = require('debug')
+const debug = debugModule('signalk-server')
+import path = require('path')
+import http = require('http')
+import https = require('https')
+import httpolyglot = require('httpolyglot')
+const pem = require('pem')
+import fs = require('fs')
+import FullSignalKimport = require('signalk-schema')
+const FullSignalK = FullSignalKimport.FullSignalK
+import StreamBundle = require('./streambundle')
+import SubscriptionManager = require('./subscriptionmanager')
 
 function Server(opts) {
   this.params = opts || {};
@@ -159,12 +161,12 @@ function startMdns(app) {
 function startInterfaces(app) {
   debug("Interfaces config:" + JSON.stringify(app.config.settings.interfaces));
   var availableInterfaces = require('./interfaces');
-  _.forIn(availableInterfaces, function(interface, name) {
+  _.forIn(availableInterfaces, function(iface, name) {
     if (_.isUndefined(app.config.settings.interfaces) ||
       _.isUndefined(app.config.settings.interfaces[name]) ||
       app.config.settings.interfaces[name]) {
       debug("Loading interface '" + name + "'");
-      app.interfaces[name] = interface(app);
+      app.interfaces[name] = iface(app);
       if (app.interfaces[name] && _.isFunction(app.interfaces[name].start)) {
         debug("Starting interface '" + name + "'");
         app.interfaces[name].start();

@@ -113,4 +113,4 @@ function toDelta(normalizedDeltaData) {
   }
 }
 
-module.exports = SubscriptionManager;
+export = SubscriptionManager;

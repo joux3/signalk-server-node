@@ -23,7 +23,7 @@ module.exports = function(app) {
     , EventEmitter  = require("events").EventEmitter
     , debug         = require('debug')('signalk-server:config:config')
     , cors          = require('cors')
-    , config        = app.config = {}
+    , config: any   = app.config = {}
     , env           = app.env = process.env
   ;
 

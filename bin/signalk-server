@@ -16,6 +16,7 @@
  * limitations under the License.
 */
 
+require('ts-node/register');
 var Server = require('../lib');
 var server = new Server();
 

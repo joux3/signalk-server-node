@@ -65,4 +65,4 @@ StreamBundle.prototype.getSelfStream = function(path) {
   return result;
 }
 
-module.exports = StreamBundle;
+export = StreamBundle;

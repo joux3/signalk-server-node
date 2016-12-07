@@ -83,7 +83,7 @@ module.exports = function(app) {
     }
   }
 
-  return api = {
+  return {
     start: startProviders
   }
 };
